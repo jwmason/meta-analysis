@@ -3,7 +3,7 @@ name: Backend CI/CD Pipeline
 on:
   push:
     branches:
-      - be3
+      - be1-api-and-scibert
 
 jobs:
   build-and-deploy:
