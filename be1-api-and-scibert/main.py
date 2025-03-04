@@ -12,7 +12,7 @@ app = FastAPI() # Web Framework for building APIs
 # Allow requests from your frontend (localhost:3000) or all origins (*)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "https://meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net", "https://meta-analysis-brhwewftaahwhcc8.eastus2-01.azurewebsites.net"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

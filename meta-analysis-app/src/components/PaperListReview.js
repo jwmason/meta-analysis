@@ -10,7 +10,7 @@ function PaperListReview() {
   const [sortBy, setSortBy] = useState('relevance');
   const [picoData, setPicoData] = useState({})
   const papersPerPage = 10;
-  const semanticScholarSearchBaseURL = "meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net/api/papers"
+  const semanticScholarSearchBaseURL = "https://meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net/api/papers";
 
   // fetch from db for planning data
   useEffect(() => {
