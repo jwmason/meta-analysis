@@ -1,9 +1,9 @@
-name: Backend CI/CD Pipeline
+name: Deploy to Azure Web App
 
 on:
   push:
     branches:
-      - be1-api-and-scibert
+      - main
 
 jobs:
   build-and-deploy:
@@ -14,30 +14,28 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           cd be1-api-and-scibert
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
 
-      - name: Log in to Azure
+      - name: Zip only application folder
+        run: |
+          cd be1-api-and-scibert
+          zip -r ../release.zip . -x "*.git*"
+
+      - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to Azure Container Registry
-        run: az acr login --name metaanalysisacr
-
-      - name: Build and Push Docker Image
-        run: |
-          docker build -t metaanalysisacr.azurecr.io/backend:latest be1-api-and-scibert/
-          docker push metaanalysisacr.azurecr.io/backend:latest
-
-      - name: Restart Web App to Apply New Image
-        run: |
-          az webapp restart --name meta-analysis-backend --resource-group meta-analysis-resource-group
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: meta-analysis-backend
+          package: release.zip
