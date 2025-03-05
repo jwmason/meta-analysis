@@ -3,7 +3,7 @@ name: Deploy to Azure Web App
 on:
   push:
     branches:
-      - main
+      - be1-api-and-scibert
 
 jobs:
   build-and-deploy:
