@@ -5,16 +5,16 @@ import { useNavigate } from 'react-router-dom';
 function PaperListReview() {
   const [selectedPapers, setSelectedPapers] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState('false')
-  const [papers, setPapers] = useState([])
+  const [loading, setLoading] = useState(false);
+  const [papers, setPapers] = useState([]);
   const [sortBy, setSortBy] = useState('relevance');
-  const [picoData, setPicoData] = useState({})
+  const [picoData, setPicoData] = useState(null); // start with null so that we control when fetch runs
   const papersPerPage = 10;
-  const semanticScholarSearchBaseURL = "https://meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net/api/papers";
+  const semanticScholarSearchBaseURL = "https://meta-analysis-brhwewftaahwhcc8.eastus2-01.azurewebsites.net/api/papers";
 
-  // fetch from db for planning data
+  // Only use the API data – remove any dummy paper generation code
+  // For planning, we set picoData once.
   useEffect(() => {
-    // dummy data
     setPicoData({
       pop: "students,k-12 students",
       inter: "Intelligent Tutoring Systems",
@@ -22,17 +22,14 @@ function PaperListReview() {
       outcome: "post-test,exam results",
       year: "",
       add_keywords: ""
-    })
-  }, [])
-  
+    });
+  }, []);
+
   useEffect(() => {
-    if (!picoData) {
-      return;
-    }
+    if (!picoData) return;
 
     const fetchData = async () => {
       setLoading(true);
-
       try {
         const queryParams = new URLSearchParams({
           pop: picoData.pop,
@@ -42,13 +39,12 @@ function PaperListReview() {
           ...(picoData.add_keywords?.length ? { add_keywords: picoData.add_keywords.join(",") } : {}),
           ...(picoData.year ? { year: picoData.year } : {}),
         });
-
         const api_url = `${semanticScholarSearchBaseURL}?${queryParams.toString()}`;
         const response = await fetch(api_url);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const semanticScholarData = await response.json();
+        // Replace any existing papers with the API response
         setPapers(semanticScholarData.data || []);
-        console.log(papers)
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -57,71 +53,56 @@ function PaperListReview() {
     };
 
     fetchData();
-  }, [picoData])
+  }, [picoData]);
 
-  // Simulate database status - in real app, this would come from your backend
-  const paperDatabase = new Set([1, 3, 5, 7, 9]); // Papers already in database
+  // IMPORTANT: Make sure no other code is generating or merging extra papers
 
-  // Generate larger paper list with additional metadata
-  // const papers = Array.from({ length: 50 }, (_, index) => ({
-  //   id: index + 1,
-  //   title: [
-  //     "The Impact of Project-Based Learning on Middle School Student Achievement",
-  //     "Implementing Project-Based Learning in Digital Environments",
-  //     "Student Engagement Through Project-Based Learning Methods",
-  //     "A Comparative Study of Traditional vs Project-Based Learning",
-  //     "Long-term Effects of Project-Based Learning on Academic Performance"
-  //   ][index % 5] + ` (Study ${index + 1})`,
-  //   authors: [
-  //     "Johnson, M., Smith, K.",
-  //     "Wilson, R., Brown, J.",
-  //     "Davis, A., Miller, P.",
-  //     "Anderson, L., Taylor, M.",
-  //     "Thompson, S., White, R."
-  //   ][index % 5],
-  //   year: 2018 + (index % 5),
-  //   journal: [
-  //     "Educational Research Quarterly",
-  //     "Teaching and Learning Research",
-  //     "Journal of Educational Methods",
-  //     "International Journal of Education",
-  //     "Educational Psychology Review"
-  //   ][index % 5],
-  //   database: ["ERIC", "Semantic Scholar", "Google Scholar"][index % 3],
-  //   abstract: "This study examines the effectiveness of project-based learning approaches...",
-  //   relevance: ["High", "Medium", "High", "Medium", "High"][index % 5],
-  //   fullTextAvailable: index % 4 !== 0,
-  //   citations: Math.floor(Math.random() * 100),
-  //   doi: `10.1234/journal.${index + 1}`,
-  //   inDatabase: paperDatabase.has(index + 1),
-  //   pdfUrl: index % 4 !== 0 ? `/sample/paper${index + 1}.pdf` : null,
-  //   viewUrl: `/view/paper${index + 1}`
-  // }));
+  // If you need to sort based on a field (and change the order), do it explicitly;
+  // if not, leave the order as returned by the API.
+  const sortedPapers = React.useMemo(() => {
+    // Only sort if the user explicitly selects a sort method. Otherwise, return as-is.
+    if (sortBy === 'year') {
+      return [...papers].sort((a, b) => a.year - b.year);
+    } else if (sortBy === 'citations') {
+      // Assuming you add a citations field later; otherwise, skip
+      return [...papers].sort((a, b) => (a.citations || 0) - (b.citations || 0));
+    }
+    // For 'relevance' or default, return in the same order as received.
+    return papers;
+  }, [papers, sortBy]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(papers.length / papersPerPage);
-  const currentPapers = papers.slice(
+  const totalPages = Math.ceil(sortedPapers.length / papersPerPage);
+  const currentPapers = sortedPapers.slice(
     (currentPage - 1) * papersPerPage,
     currentPage * papersPerPage
   );
 
-  // Clear selection handler
   const handleClearSelection = () => {
     setSelectedPapers(new Set());
   };
 
-  // Handle paper actions
+  const handleSelectAllOnPage = () => {
+    const newSelected = new Set(selectedPapers);
+    currentPapers.forEach(paper => newSelected.add(paper.paperId));
+    setSelectedPapers(newSelected);
+  };
+
   const handleViewPaper = (e, paper) => {
     e.stopPropagation();
-    window.open(paper.viewUrl, '_blank');
+    window.open(paper.url, '_blank');
   };
 
   const handleDownloadPaper = (e, paper) => {
     e.stopPropagation();
-    if (paper.pdfUrl) {
-      // In a real app, this would trigger the download through your backend
-      console.log(`Downloading paper: ${paper.title}`);
+    if (paper.openAccessPdf) {
+      window.open(paper.openAccessPdf, '_blank');
     }
+  };
+
+  const getTruncatedAbstract = (abstract) => {
+    if (!abstract) return "Missing Abstract";
+    return abstract.length > 200 ? abstract.slice(0, 200) + "..." : abstract;
   };
 
   const PaginationControls = () => (
@@ -133,10 +114,10 @@ function PaperListReview() {
             <span className="font-medium">{((currentPage - 1) * papersPerPage) + 1}</span>
             {' '}-{' '}
             <span className="font-medium">
-              {Math.min(currentPage * papersPerPage, papers.length)}
+              {Math.min(currentPage * papersPerPage, sortedPapers.length)}
             </span>
             {' '}of{' '}
-            <span className="font-medium">{papers.length}</span>
+            <span className="font-medium">{sortedPapers.length}</span>
             {' '}papers
           </p>
         </div>
@@ -158,15 +139,18 @@ function PaperListReview() {
       </div>
     </div>
   );
+
   const navigate = useNavigate();
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       {/* Header */}
       <button 
-        onClick={() => { navigate('/education-analysis-setup'); }}
-        className="flex items-center text-gray-600 hover:text-gray-900 mb-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Educational Analysis
+        onClick={() => navigate('/education-analysis-setup')}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Educational Analysis
       </button>
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-2">Review Selected Papers</h1>
@@ -181,7 +165,7 @@ function PaperListReview() {
           <div className="flex space-x-8">
             <div>
               <span className="text-sm text-gray-500">Total Papers</span>
-              <p className="text-lg font-semibold">{papers.length}</p>
+              <p className="text-lg font-semibold">{sortedPapers.length}</p>
             </div>
             <div>
               <span className="text-sm text-gray-500">Selected</span>
@@ -202,18 +186,19 @@ function PaperListReview() {
               <option value="citations">Sort by Citations</option>
             </select>
             
-            <button className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100">
+            <button 
+              onClick={handleSelectAllOnPage}
+              className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+            >
               Select All on Page
             </button>
             <button 
               onClick={handleClearSelection}
-              className={`
-                px-4 py-2 text-sm rounded-lg transition-colors
-                ${selectedPapers.size > 0 
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                selectedPapers.size > 0 
                   ? 'bg-gray-50 text-gray-600 hover:bg-gray-100 cursor-pointer' 
                   : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                }
-              `}
+              }`}
               disabled={selectedPapers.size === 0}
             >
               Clear Selection
@@ -224,20 +209,22 @@ function PaperListReview() {
 
       {/* Papers List */}
       <div className="space-y-4 mb-6">
-        {currentPapers.map((paper) => (
+        {loading ? (
+          <p>Loading...</p>
+        ) : currentPapers.map((paper) => (
           <div 
-            key={paper.id}
-            className={`
-              bg-white rounded-lg shadow-sm border p-6
-              ${selectedPapers.has(paper.id) ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-300'}
-              transition-colors cursor-pointer
-            `}
+            key={paper.paperId}
+            className={`bg-white rounded-lg shadow-sm border p-6 ${
+              selectedPapers.has(paper.paperId)
+                ? 'border-blue-500 bg-blue-50'
+                : 'hover:border-gray-300'
+            } transition-colors cursor-pointer`}
             onClick={() => {
               const newSelected = new Set(selectedPapers);
-              if (newSelected.has(paper.id)) {
-                newSelected.delete(paper.id);
+              if (newSelected.has(paper.paperId)) {
+                newSelected.delete(paper.paperId);
               } else {
-                newSelected.add(paper.id);
+                newSelected.add(paper.paperId);
               }
               setSelectedPapers(newSelected);
             }}
@@ -245,46 +232,45 @@ function PaperListReview() {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-lg">{paper.title | "Missing Title"}</h3>
+                  <h3 className="text-lg">{paper.title || "Missing Title"}</h3>
                   <div className="flex items-center space-x-2 ml-4">
-                    {paper.inDatabase && (
+                    { /* If you have info on whether the paper is already in your database */ }
+                    { /* For now, we check against a dummy set if needed */ }
+                    {/* {paperDatabase.has(paper.paperId) && (
                       <span className="flex items-center text-green-600 bg-green-50 px-2 py-1 rounded text-xs">
                         <Database className="w-3 h-3 mr-1" />
                         In Database
                       </span>
-                    )}
+                    )} */}
                   </div>
                 </div>
-                <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
-                  <span>{paper.authors | "Missing Authors"}</span>
+                <div className="flex flex-wrap items-center space-x-4 text-sm text-gray-500 mb-2">
+                  <span>
+                    {paper.authors 
+                      ? paper.authors.map(author => author.name).join(", ")
+                      : "Missing Authors"}
+                  </span>
                   <span>•</span>
-                  <span>{paper.year | "Missing Year"}</span>
+                  <span>{paper.year || "Missing Year"}</span>
                   <span>•</span>
-                  <span>{paper.journal | "Missing Journal"}</span>
-                  <span>•</span>
-                  <span>{paper.citations | "Missing Citations"} citations</span>
-                  <a href={`https://doi.org/${paper.doi}`} 
-                     target="_blank" 
-                     rel="noopener noreferrer"
-                     className="text-blue-600 hover:text-blue-800 flex items-center"
-                     onClick={(e) => e.stopPropagation()}>
-                    <ExternalLink className="w-3 h-3 mr-1" />
-                    {paper.doi | "Missing DOI"}
-                  </a>
+                  <span>
+                    {paper.journal && paper.journal.name 
+                      ? paper.journal.name 
+                      : "Missing Journal"}
+                  </span>
+                  {paper.journal && paper.journal.pages && (
+                    <>
+                      <span>•</span>
+                      <span>Pages: {paper.journal.pages}</span>
+                    </>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{paper.abstract | "Missing Abstract"}</p>
+                <p className="text-sm text-gray-600 mb-3">
+                  {getTruncatedAbstract(paper.abstract)}
+                </p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                      {paper.database | "Missing Database"}
-                    </span>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      paper.relevance === 'High' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {paper.relevance | "Missing Relevance"} Relevance
-                    </span>
+                    {/* Additional metadata can be added here if needed */}
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -294,28 +280,33 @@ function PaperListReview() {
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </button>
-                    {paper.fullTextAvailable && (
+                    {paper.openAccessPdf ? (
                       <button
                         onClick={(e) => handleDownloadPaper(e, paper)}
                         className="flex items-center px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                        disabled={paper.inDatabase}
                       >
                         <FileDown className="w-4 h-4 mr-1" />
-                        {paper.inDatabase ? 'Already Saved' : 'Download PDF'}
+                        Download PDF
+                      </button>
+                    ) : (
+                      <button
+                        className="flex items-center px-3 py-1 text-sm text-gray-400 cursor-not-allowed"
+                        disabled
+                      >
+                        <FileDown className="w-4 h-4 mr-1" />
+                        No PDF Available
                       </button>
                     )}
                   </div>
                 </div>
               </div>
               <div className="ml-4">
-                <div className={`
-                  w-6 h-6 rounded-full border-2 flex items-center justify-center
-                  ${selectedPapers.has(paper.id) 
-                    ? 'border-blue-500 bg-blue-500' 
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  selectedPapers.has(paper.paperId)
+                    ? 'border-blue-500 bg-blue-500'
                     : 'border-gray-300'
-                  }
-                `}>
-                  {selectedPapers.has(paper.id) && (
+                }`}>
+                  {selectedPapers.has(paper.paperId) && (
                     <Check className="w-4 h-4 text-white" />
                   )}
                 </div>
@@ -332,20 +323,20 @@ function PaperListReview() {
 
       {/* Navigation Buttons */}
       <div className="flex justify-between items-center">
-        <button onClick={() => navigate('/education-analysis-setup')} className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+        <button
+          onClick={() => navigate('/education-analysis-setup')}
+          className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+        >
           Back to Search
         </button>
         <button 
-          className={`
-            px-6 py-3 rounded-lg transition-colors flex items-center space-x-2
-            ${selectedPapers.size > 0
+          className={`px-6 py-3 rounded-lg transition-colors flex items-center space-x-2 ${
+            selectedPapers.size > 0
               ? 'bg-blue-500 text-white hover:bg-blue-600'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }
-          `}
+          }`}
           disabled={selectedPapers.size === 0}
           onClick={() => {
-            // Navigate to codebook setup
             console.log('Navigate to selection criteria with papers:', selectedPapers);
             navigate('/paperpool-overview');
           }}
