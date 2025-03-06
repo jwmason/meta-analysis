@@ -1,9 +1,9 @@
-name: Deploy FastAPI Backend to Azure App Service with Docker (Admin Credentials)
+name: Deploy FastAPI Backend to Azure App Service with Docker (Admin Credentials Pre-Configured)
 
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Adjust to your branch if needed
+      - be1-api-and-scibert  # Adjust to your actual branch if needed
 
 jobs:
   build-and-deploy:
@@ -34,33 +34,8 @@ jobs:
         run: |
           docker push $IMAGE_TAG
 
-      - name: Get ACR Credentials
-        id: acr-creds
+      - name: Restart App Service (to pull latest image)
         run: |
-          ACR_USERNAME=$(az acr credential show --name metaanalysisacr --query "username" -o tsv)
-          ACR_PASSWORD=$(az acr credential show --name metaanalysisacr --query "passwords[0].value" -o tsv)
-
-          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
-
-      - name: Stop App Service (to clear .NET Core container)
-        run: |
-          az webapp stop \
-            --name meta-analysis-backend \
-            --resource-group meta-analysis-resource-group
-
-      - name: Configure App Service to Use ACR Image with Admin Credentials
-        run: |
-          az webapp config container set \
-            --name meta-analysis-backend \
-            --resource-group meta-analysis-resource-group \
-            --docker-custom-image-name $IMAGE_TAG \
-            --docker-registry-server-url https://metaanalysisacr.azurecr.io \
-            --docker-registry-server-user $ACR_USERNAME \
-            --docker-registry-server-password $ACR_PASSWORD
-
-      - name: Start App Service
-        run: |
-          az webapp start \
+          az webapp restart \
             --name meta-analysis-backend \
             --resource-group meta-analysis-resource-group
