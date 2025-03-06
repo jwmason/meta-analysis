@@ -1,45 +1,42 @@
-name: Deploy FastAPI Backend to Azure App Service
+name: Deploy FastAPI Backend to Azure App Service with Docker
 
 on:
   push:
     branches:
-      - be1-api-and-scibert
+      - be1-api-and-scibert  # Adjust to your branch
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Package FastAPI Application Files
-        run: |
-          cd be1-api-and-scibert  # Make sure your FastAPI app lives here
-          zip -r ../release.zip . -x "*.git*" "*.venv*" "__pycache__*" "*.DS_Store*"
-
-      - name: Azure Login
+      - name: Log in to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Configure Azure App Service Environment Variables
+      - name: Log in to Azure Container Registry (ACR)
         run: |
-          az webapp config appsettings set \
+          az acr login --name metaanalysisacr
+
+      - name: Set Docker Image Tag
+        run: echo "IMAGE_TAG=metaanalysisacr.azurecr.io/meta-analysis-backend:latest" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $IMAGE_TAG .
+
+      - name: Push Docker Image to ACR
+        run: |
+          docker push $IMAGE_TAG
+
+      - name: Deploy to Azure App Service (Container)
+        run: |
+          az webapp config container set \
             --name meta-analysis-backend \
             --resource-group meta-analysis-resource-group \
-            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-                       WEBSITES_PORT=8000
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: meta-analysis-backend
-          package: release.zip
-
-      - name: Set Startup Command (Install + Start FastAPI)
-        run: |
-          az webapp config set \
-            --name meta-analysis-backend \
-            --resource-group meta-analysis-resource-group \
-            --startup-file "python -m pip install --no-cache-dir -r requirements.txt && gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 main:app"
+            --docker-custom-image-name $IMAGE_TAG \
+            --docker-registry-server-url https://metaanalysisacr.azurecr.io
