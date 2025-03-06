@@ -3,7 +3,7 @@ name: Deploy FastAPI Backend to Azure App Service
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Adjust if needed
+      - be1-api-and-scibert  # Update to match your branch name
 
 jobs:
   build-and-deploy:
@@ -13,9 +13,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Package application files (exclude unnecessary files)
+      - name: Package FastAPI Application Files
         run: |
-          cd be1-api-and-scibert  # Adjust if your FastAPI app is inside this folder
+          cd be1-api-and-scibert  # Adjust this if your FastAPI code is inside this folder
           zip -r ../release.zip . -x "*.git*" "*.venv*" "__pycache__*" "*.DS_Store*"
 
       - name: Azure Login
@@ -23,7 +23,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Configure Azure App Service Settings (Enable build on deploy)
+      - name: Configure App Service (Set Environment Variables)
         run: |
           az webapp config appsettings set \
             --name meta-analysis-backend \
@@ -31,16 +31,15 @@ jobs:
             --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                        WEBSITES_PORT=8000
 
-      - name: Deploy to Azure Web App
+      - name: Deploy FastAPI App to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
           app-name: meta-analysis-backend
           package: release.zip
-          clean: true  # Removes old files before deploying
 
-      - name: Set FastAPI Startup Command
+      - name: Set Startup Command to Install Dependencies and Start App
         run: |
           az webapp config set \
             --name meta-analysis-backend \
             --resource-group meta-analysis-resource-group \
-            --startup-file "gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 main:app"
+            --startup-file "python -m pip install --no-cache-dir -r requirements.txt && gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 main:app"
