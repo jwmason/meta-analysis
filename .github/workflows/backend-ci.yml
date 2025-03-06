@@ -23,11 +23,27 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Clear Azure App Service Environment and Cache
+        run: |
+          az webapp stop \
+            --name meta-analysis-backend \
+            --resource-group meta-analysis-resource-group
+
+          az webapp config appsettings set \
+            --name meta-analysis-backend \
+            --resource-group meta-analysis-resource-group \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
+
+          az webapp start \
+            --name meta-analysis-backend \
+            --resource-group meta-analysis-resource-group
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: meta-analysis-backend
           package: release.zip
+          clean: true  # Force full redeploy (removes old files)
 
       - name: Set Startup Command
         run: |
