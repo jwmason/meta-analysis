@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t $IMAGE_TAG .
+          docker build -t $IMAGE_TAG ./be1-api-and-scibert
 
       - name: Push Docker Image to ACR
         run: |
