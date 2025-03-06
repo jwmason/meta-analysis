@@ -3,7 +3,7 @@ name: Deploy FastAPI Backend to Azure App Service
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Adjust this if needed
+      - be1-api-and-scibert  # Adjust if needed
 
 jobs:
   build-and-deploy:
@@ -13,41 +13,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Package application files (do not include the parent folder)
+      - name: Package application files (exclude unnecessary files)
         run: |
-          cd be1-api-and-scibert
-          zip -r ../release.zip . -x "*.git*" "*.venv*" "__pycache__*"
+          cd be1-api-and-scibert  # Adjust if your FastAPI app is inside this folder
+          zip -r ../release.zip . -x "*.git*" "*.venv*" "__pycache__*" "*.DS_Store*"
 
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Clear Azure App Service Environment and Cache
+      - name: Configure Azure App Service Settings (Enable build on deploy)
         run: |
-          az webapp stop \
-            --name meta-analysis-backend \
-            --resource-group meta-analysis-resource-group
-
           az webapp config appsettings set \
             --name meta-analysis-backend \
             --resource-group meta-analysis-resource-group \
-            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
-
-          az webapp start \
-            --name meta-analysis-backend \
-            --resource-group meta-analysis-resource-group
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                       WEBSITES_PORT=8000
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: meta-analysis-backend
           package: release.zip
-          clean: true  # Force full redeploy (removes old files)
+          clean: true  # Removes old files before deploying
 
-      - name: Set Startup Command
+      - name: Set FastAPI Startup Command
         run: |
           az webapp config set \
-            --resource-group meta-analysis-resource-group \
             --name meta-analysis-backend \
-            --startup-file "bash /home/site/wwwroot/startup.sh"
+            --resource-group meta-analysis-resource-group \
+            --startup-file "gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 main:app"
