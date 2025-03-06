@@ -1,36 +1,48 @@
-- name: Checkout repository
-  uses: actions/checkout@v3
+name: Backend CI Pipeline
 
-- name: Set up Python
-  uses: actions/setup-python@v4
-  with:
-    python-version: '3.11'
+on:
+  push:
+    branches:
+      - be1-api-and-scibert  # Adjust if you're using a different branch like 'be1-api-and-scibert'
 
-- name: Install dependencies
-  run: |
-    cd be1-api-and-scibert
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
-- name: Zip only application files (not the parent folder itself)
-  run: |
-    cd be1-api-and-scibert
-    zip -r ../release.zip . -x "*.git*"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-- name: Login to Azure
-  uses: azure/login@v1
-  with:
-    creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-- name: Deploy to Azure Web App
-  uses: azure/webapps-deploy@v2
-  with:
-    app-name: meta-analysis-backend
-    package: release.zip
+      - name: Install dependencies
+        run: |
+          cd be1-api-and-scibert
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-- name: Set Startup Command
-  run: |
-    az webapp config set \
-      --resource-group meta-analysis-resource-group \
-      --name meta-analysis-backend \
-      --startup-file "bash /home/site/wwwroot/startup.sh"
+      - name: Zip only application files (not the parent folder itself)
+        run: |
+          cd be1-api-and-scibert
+          zip -r ../release.zip . -x "*.git*"
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: meta-analysis-backend
+          package: release.zip
+
+      - name: Set Startup Command
+        run: |
+          az webapp config set \
+            --resource-group meta-analysis-resource-group \
+            --name meta-analysis-backend \
+            --startup-file "bash /home/site/wwwroot/startup.sh"
