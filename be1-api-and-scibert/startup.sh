@@ -1,13 +1,12 @@
 #!/bin/bash
-set -e  # Exit script on first error
 
-echo "========== Starting Custom Startup Script =========="
-echo "Current directory: $(pwd)"
-echo "Listing files in /home/site/wwwroot:"
-ls -l /home/site/wwwroot
+echo "========= Starting Custom Startup Script ========="
+
+cd /home/site/wwwroot || exit
 
 echo "Installing dependencies from requirements.txt..."
-pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
-echo "Launching Gunicorn with UvicornWorker..."
+echo "Starting FastAPI application with Gunicorn..."
 exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 main:app

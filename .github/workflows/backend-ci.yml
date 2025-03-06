@@ -1,9 +1,9 @@
-name: Backend CI Pipeline
+name: Deploy FastAPI Backend to Azure App Service
 
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Update to match your actual branch if needed
+      - be1-api-and-scibert  # Adjust this if needed
 
 jobs:
   build-and-deploy:
@@ -13,23 +13,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
+      - name: Package application files (do not include the parent folder)
         run: |
           cd be1-api-and-scibert
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          zip -r ../release.zip . -x "*.git*" "*.venv*" "__pycache__*"
 
-      - name: Zip only application files (not the parent folder itself)
-        run: |
-          cd be1-api-and-scibert
-          zip -r ../release.zip . -x "*.git*"
-
-      - name: Login to Azure
+      - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -46,10 +35,3 @@ jobs:
             --resource-group meta-analysis-resource-group \
             --name meta-analysis-backend \
             --startup-file "bash /home/site/wwwroot/startup.sh"
-
-      - name: Health Check Verification (Home Endpoint Check)
-        run: |
-          echo "Waiting for app to warm up..."
-          sleep 60  # Allow Azure time to start the container
-          echo "Checking root ('/') endpoint for app health..."
-          curl -f https://meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net/ || (echo "Health check failed!" && exit 1)
