@@ -1,49 +1,36 @@
-name: Backend CI Pipeline
+- name: Checkout repository
+  uses: actions/checkout@v3
 
-on:
-  push:
-    branches:
-      - be1-api-and-scibert
+- name: Set up Python
+  uses: actions/setup-python@v4
+  with:
+    python-version: '3.11'
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+- name: Install dependencies
+  run: |
+    cd be1-api-and-scibert
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+- name: Zip only application files (not the parent folder itself)
+  run: |
+    cd be1-api-and-scibert
+    zip -r ../release.zip . -x "*.git*"
 
-      - name: Zip only application folder
-        run: |
-          cd be1-api-and-scibert
-          zip -r ../release.zip . -x "*.git*"
+- name: Login to Azure
+  uses: azure/login@v1
+  with:
+    creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+- name: Deploy to Azure Web App
+  uses: azure/webapps-deploy@v2
+  with:
+    app-name: meta-analysis-backend
+    package: release.zip
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: meta-analysis-backend
-          package: release.zip
-
-      # New Step: Force Azure App Service to use the correct startup command
-      - name: Set Startup Command to Use Custom startup.sh
-        run: |
-          az webapp config set \
-            --resource-group meta-analysis-resource-group \
-            --name meta-analysis-backend \
-            --startup-file "bash /home/site/wwwroot/startup.sh"
-        env:
-          AZURE_CLI_DISABLE_CONNECTION_VERIFICATION: "1"  # Optional, but can prevent network issues with GitHub-hosted runners
-
-      # Optional: Restart the app to make sure the new command is applied immediately (good for safety)
-      - name: Restart Azure Web App
-        run: |
-          az webapp restart \
-            --resource-group meta-analysis-resource-group \
-            --name meta-analysis-backend
-        env:
-          AZURE_CLI_DISABLE_CONNECTION_VERIFICATION: "1"
+- name: Set Startup Command
+  run: |
+    az webapp config set \
+      --resource-group meta-analysis-resource-group \
+      --name meta-analysis-backend \
+      --startup-file "bash /home/site/wwwroot/startup.sh"
