@@ -3,7 +3,7 @@ name: Deploy FastAPI Backend to Azure App Service
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Update to match your branch name
+      - be1-api-and-scibert
 
 jobs:
   build-and-deploy:
@@ -15,7 +15,7 @@ jobs:
 
       - name: Package FastAPI Application Files
         run: |
-          cd be1-api-and-scibert  # Adjust this if your FastAPI code is inside this folder
+          cd be1-api-and-scibert  # Make sure your FastAPI app lives here
           zip -r ../release.zip . -x "*.git*" "*.venv*" "__pycache__*" "*.DS_Store*"
 
       - name: Azure Login
@@ -23,7 +23,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Configure App Service (Set Environment Variables)
+      - name: Configure Azure App Service Environment Variables
         run: |
           az webapp config appsettings set \
             --name meta-analysis-backend \
@@ -31,13 +31,13 @@ jobs:
             --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true \
                        WEBSITES_PORT=8000
 
-      - name: Deploy FastAPI App to Azure App Service
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: meta-analysis-backend
           package: release.zip
 
-      - name: Set Startup Command to Install Dependencies and Start App
+      - name: Set Startup Command (Install + Start FastAPI)
         run: |
           az webapp config set \
             --name meta-analysis-backend \
