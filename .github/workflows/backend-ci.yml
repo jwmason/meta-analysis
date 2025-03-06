@@ -3,7 +3,7 @@ name: Backend CI Pipeline
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Adjust if you're using a different branch like 'be1-api-and-scibert'
+      - be1-api-and-scibert  # Update to match your actual branch if needed
 
 jobs:
   build-and-deploy:
@@ -46,3 +46,10 @@ jobs:
             --resource-group meta-analysis-resource-group \
             --name meta-analysis-backend \
             --startup-file "bash /home/site/wwwroot/startup.sh"
+
+      - name: Health Check Verification (Home Endpoint Check)
+        run: |
+          echo "Waiting for app to warm up..."
+          sleep 60  # Allow Azure time to start the container
+          echo "Checking root ('/') endpoint for app health..."
+          curl -f https://meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net/ || (echo "Health check failed!" && exit 1)
