@@ -39,3 +39,4 @@ jobs:
           az webapp restart \
             --name meta-analysis-backend \
             --resource-group meta-analysis-resource-group
+
