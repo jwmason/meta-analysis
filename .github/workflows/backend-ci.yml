@@ -1,4 +1,4 @@
-name: Deploy to Azure Web App
+name: Backend CI Pipeline
 
 on:
   push:
@@ -17,12 +17,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          cd be1-api-and-scibert
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
 
       - name: Zip only application folder
         run: |
