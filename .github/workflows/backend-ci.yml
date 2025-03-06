@@ -28,3 +28,22 @@ jobs:
         with:
           app-name: meta-analysis-backend
           package: release.zip
+
+      # New Step: Force Azure App Service to use the correct startup command
+      - name: Set Startup Command to Use Custom startup.sh
+        run: |
+          az webapp config set \
+            --resource-group meta-analysis-resource-group \
+            --name meta-analysis-backend \
+            --startup-file "bash /home/site/wwwroot/startup.sh"
+        env:
+          AZURE_CLI_DISABLE_CONNECTION_VERIFICATION: "1"  # Optional, but can prevent network issues with GitHub-hosted runners
+
+      # Optional: Restart the app to make sure the new command is applied immediately (good for safety)
+      - name: Restart Azure Web App
+        run: |
+          az webapp restart \
+            --resource-group meta-analysis-resource-group \
+            --name meta-analysis-backend
+        env:
+          AZURE_CLI_DISABLE_CONNECTION_VERIFICATION: "1"
