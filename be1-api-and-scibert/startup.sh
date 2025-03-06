@@ -1,10 +1,13 @@
 #!/bin/bash
+set -e  # Exit script on first error
 
-# Optional: Log for debugging (visible in Kudu SSH if needed)
-echo "Running startup script..."
+echo "========== Starting Custom Startup Script =========="
+echo "Current directory: $(pwd)"
+echo "Listing files in /home/site/wwwroot:"
+ls -l /home/site/wwwroot
 
-# Install dependencies inside App Service (in case they aren't installed correctly)
-pip install -r /home/site/wwwroot/requirements.txt
+echo "Installing dependencies from requirements.txt..."
+pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt
 
-# Start the application with Gunicorn and UvicornWorker
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 be1-api-and-scibert.main:app
+echo "Launching Gunicorn with UvicornWorker..."
+exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 be1-api-and-scibert.main:app

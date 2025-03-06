@@ -10,7 +10,7 @@ function PaperListReview() {
   const [sortBy, setSortBy] = useState('relevance');
   const [picoData, setPicoData] = useState(null); // start with null so that we control when fetch runs
   const papersPerPage = 10;
-  const semanticScholarSearchBaseURL = "https://meta-analysis-brhwewftaahwhcc8.eastus2-01.azurewebsites.net/api/papers";
+  const semanticScholarSearchBaseURL = "https://meta-analysis-backend-effzbjd8aff4gjbs.eastus2-01.azurewebsites.net/api/papers";
 
   // Only use the API data – remove any dummy paper generation code
   // For planning, we set picoData once.
