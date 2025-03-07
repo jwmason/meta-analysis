@@ -1,40 +1,31 @@
-import uvicorn # Running server
-from fastapi import FastAPI # Web framework
+import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.bert import bert_api
-from routes.semanticscholar import semantic_scholar_api
-from dotenv import load_dotenv
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 import os
+from dotenv import load_dotenv
 
-load_dotenv() # load env variables
-app = FastAPI() # Web Framework for building APIs
+load_dotenv()
 
-# Allow requests from your frontend (localhost:3000) or all origins (*)
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://meta-analysis-brhwewftaahwhcc8.eastus2-01.azurewebsites.net"],
+    allow_origins=["http://localhost:3000", "https://meta-analysis-frontend.azurewebsites.net"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-# Include routes
-app.include_router(bert_api, prefix="/api")
-app.include_router(semantic_scholar_api, prefix="/api")
+# Optional middleware
+app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-# Test server if it's running
 @app.get("/")
 def is_server_running():
-    return { "status": True, "message": "The server is currently running." }
+    return {"status": True, "message": "The server is currently running."}
 
-# Server Configuration and Launch
 if __name__ == "__main__":
-    # env variables
-    local_ip = os.getenv("SERV_LOCAL_IP", "127.0.0.1")
-    public_ip = os.getenv("SERV_PUBLIC_IP")
-    python_env = os.getenv("PYTHON_ENV", "development")
-    serv_port = int(os.getenv("SERV_PORT", 8000))
-
-    domain = public_ip if python_env == "production" else local_ip
-    reload_status = python_env == "production"
-    uvicorn.run("main:app", host=domain, port=serv_port, reload=reload_status)
+    port = int(os.getenv("SERV_PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)

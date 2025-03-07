@@ -3,7 +3,7 @@ name: Deploy FastAPI Backend to Azure App Service with Docker (Admin Credentials
 on:
   push:
     branches:
-      - be1-api-and-scibert  # Adjust to your actual branch if needed
+      - main # Adjust to your actual branch if needed
 
 jobs:
   build-and-deploy:
