@@ -32,6 +32,9 @@ jobs:
           cd be1-api-and-scibert
           zip -r ../release.zip .  # This zips all contents (but not the be1-api-and-scibert folder itself)
 
+      - name: List contents of release.zip
+        run: unzip -l release.zip  # Lists all files inside the ZIP for debugging
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -52,7 +55,9 @@ jobs:
           name: python-app
 
       - name: Unzip artifact
-        run: unzip release.zip
+        run: |
+          unzip release.zip
+          ls -R  # Lists all extracted files to confirm structure
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
