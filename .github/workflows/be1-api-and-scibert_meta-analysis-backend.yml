@@ -16,24 +16,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Free up disk space before installation
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+          sudo apt-get clean
+          sudo apt-get autoremove -y
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo docker system prune -a -f
+          sudo rm -rf /tmp/*
+          echo "Disk space after cleanup:"
+          df -h
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install dependencies with cleanup
         run: |
           python -m pip install --upgrade pip
           cd be1-api-and-scibert
-          pip install -r requirements.txt
+          pip install --no-cache-dir -r requirements.txt  # Prevents caching large dependencies
+
+      - name: Check disk usage after dependencies installation
+        run: df -h
 
       - name: Zip artifact for deployment
         run: |
           cd be1-api-and-scibert
-          zip -r ../release.zip .  # This zips all contents (but not the be1-api-and-scibert folder itself)
+          zip -r ../release.zip .
 
       - name: List contents of release.zip
-        run: unzip -l release.zip  # Lists all files inside the ZIP for debugging
+        run: unzip -l release.zip  
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -57,7 +72,7 @@ jobs:
       - name: Unzip artifact
         run: |
           unzip release.zip
-          ls -R  # Lists all extracted files to confirm structure
+          ls -R  
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
